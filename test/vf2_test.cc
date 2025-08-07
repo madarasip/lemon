@@ -292,6 +292,9 @@ void checkVf2ppCompile() {
 
   succ = vf2pp(g,h).nodeLabels(c1_IntConv,c2_IntConv).mapping(r).run();
   succ = vf2pp(g,h).nodeLabels(c1_IntConv,c2_IntConv).mapping(r).run();
+
+  auto* vf2ppPtr = vf2pp(g, h).mapping(r).nodeLabels(c1, c2).induced()
+    .getPtrToVf2ppObject();
 }
 
 void vf2ppCompile() {
@@ -373,7 +376,8 @@ void checkLabel(const G1 &g1, const G2 &,
 }
 
 template<class G1,class G2,class L1,class L2,class T>
-bool checkSub(const G1 &g1, const G2 &g2, const L1 &l1, const L2 &l2, const T &vf2) {
+bool checkSub(const G1 &g1, const G2 &g2, const L1 &l1, const L2 &l2,
+              const T &vf2) {
   typename G1:: template NodeMap<typename G2::Node> iso(g1,INVALID);
   if (const_cast<T&>(vf2).nodeLabels(l1,l2).mapping(iso).run()){
     checkSubIso(g1,g2,iso);
@@ -402,9 +406,79 @@ void checkIso(const G1 &g1, const G2 &g2, bool expected, const char* msg) {
 }
 
 template<class G1,class G2,class L1,class L2>
-void checkSub(const G1 &g1, const G2 &g2, const L1 &l1, const L2 &l2, bool expected, const char* msg) {
+void checkSub(const G1 &g1, const G2 &g2, const L1 &l1, const L2 &l2,
+              bool expected, const char* msg) {
   check(checkSub(g1,g2,l1,l2,vf2(g1,g2)) == expected, msg);
   check(checkSub(g1,g2,l1,l2,vf2pp(g1,g2)) == expected, msg);
+}
+
+
+template<class G1,class G2>
+void checkSubCount(const G1 &g1, const G2 &g2, int expected, const char* msg) {
+  check(vf2(g1,g2).count() == expected, msg);
+  check(vf2pp(g1,g2).count() == expected, msg);
+  {
+    auto* vf2ppPtr = vf2pp(g1, g2).getPtrToVf2ppObject();
+    int cnt = 0;
+    while(vf2ppPtr->find())
+      ++cnt;
+    check(cnt == expected, msg);
+  }
+  {
+    auto* vf2Ptr = vf2(g1, g2).getPtrToVf2Object();
+    int cnt = 0;
+    while(vf2Ptr->find())
+      ++cnt;
+    check(cnt == expected, msg);
+  }
+}
+
+template<class G1,class G2>
+void checkIndCount(const G1 &g1, const G2 &g2, int expected, const char* msg) {
+  check(vf2(g1,g2).induced().count() == expected, msg);
+  check(vf2pp(g1,g2).induced().count() == expected, msg);
+  {
+    typename G1::NodeMap<char> l1(g1,0);
+    typename G2::NodeMap<char> l2(g2,0);
+    typename G1::NodeMap<typename G1::Node> m(g1);
+    auto* vf2ppPtr = vf2pp(g1, g2).induced().mapping(m).nodeLabels(l1,l2)
+      .getPtrToVf2ppObject();
+    int cnt = 0;
+    while(vf2ppPtr->find())
+      ++cnt;
+    check(cnt == expected, msg);
+  }
+  {
+    typename G1::NodeMap<char> l1(g1,0);
+    typename G2::NodeMap<char> l2(g2,0);
+    typename G1::NodeMap<typename G1::Node> m(g1);
+    auto* vf2Ptr = vf2(g1, g2).induced().mapping(m).nodeLabels(l1,l2)
+      .getPtrToVf2Object();
+    int cnt = 0;
+    while(vf2Ptr->find())
+      ++cnt;
+    check(cnt == expected, msg);
+  }
+}
+
+template<class G1,class G2>
+void checkIsoCount(const G1 &g1, const G2 &g2, int expected, const char* msg) {
+  check(vf2(g1,g2).iso().count() == expected, msg);
+  check(vf2pp(g1,g2).iso().count() == expected, msg);
+  {
+    auto* vf2ppPtr = vf2pp(g1, g2).iso().getPtrToVf2ppObject();
+    int cnt = 0;
+    while(vf2ppPtr->find())
+      ++cnt;
+    check(cnt == expected, msg);
+  }
+  {
+    auto* vf2Ptr = vf2(g1, g2).iso().getPtrToVf2Object();
+    int cnt = 0;
+    while(vf2Ptr->find())
+      ++cnt;
+    check(cnt == expected, msg);
+  }
 }
 
 int main() {
@@ -412,32 +486,44 @@ int main() {
 
   checkSub(c5,petersen,true,
       "There should exist a C5->Petersen mapping.");
+  checkSubCount(c5,petersen,120,
+      "There should exist 120 Petersen->Petersen mappings.");
   checkSub(c7,petersen,false,
       "There should not exist a C7->Petersen mapping.");
   checkSub(p10,petersen,true,
       "There should exist a P10->Petersen mapping.");
+  checkSubCount(p10,petersen,240,
+      "There should exist 240 Petersen->Petersen mappings.");
   checkSub(c10,petersen,false,
       "There should not exist a C10->Petersen mapping.");
   checkSub(petersen,petersen,true,
       "There should exist a Petersen->Petersen mapping.");
+  checkSubCount(petersen,petersen,120,
+      "There should exist 120 Petersen->Petersen mappings.");
 
   checkInd(c5,petersen,true,
-      "There should exist a C5->Petersen spanned mapping.");
+      "There should exist a C5->Petersen induced mapping.");
+  checkIndCount(c5,petersen,120,
+      "There should exist 120 C5->Petersen induced mappings.");
   checkInd(c7,petersen,false,
-      "There should exist a C7->Petersen spanned mapping.");
+      "There should exist a C7->Petersen induced mapping.");
   checkInd(p10,petersen,false,
-      "There should not exist a P10->Petersen spanned mapping.");
+      "There should not exist a P10->Petersen induced mapping.");
   checkInd(c10,petersen,false,
-      "There should not exist a C10->Petersen spanned mapping.");
+      "There should not exist a C10->Petersen induced mapping.");
   checkInd(petersen,petersen,true,
-        "There should exist a Petersen->Petersen spanned mapping.");
+        "There should exist a Petersen->Petersen induced mapping.");
+  checkIndCount(petersen,petersen,120,
+        "There should exist 120 Petersen->Petersen induced mappings.");
 
   checkSub(petersen,c10,false,
       "There should not exist a Petersen->C10 mapping.");
   checkSub(p10,c10,true,
       "There should exist a P10->C10 mapping.");
+  checkSubCount(p10,c10,20,
+      "There should exist 20 P10->C10 mappings.");
   checkInd(p10,c10,false,
-      "There should not exist a P10->C10 spanned mapping.");
+      "There should not exist a P10->C10 induced mapping.");
   checkSub(c10,p10,false,
       "There should not exist a C10->P10 mapping.");
 
@@ -445,6 +531,13 @@ int main() {
       "P10 and C10 are not isomorphic.");
   checkIso(c10,c10,true,
       "C10 and C10 are isomorphic.");
+
+  checkSubCount(c10,c10,20,
+      "There should exists 20 C10 -> C10 mappings.");
+  checkIndCount(c10,c10,20,
+      "There should exists 20 C10 -> C10 induced mappings.");
+  checkIsoCount(c10,c10,20,
+      "There should exists 20 C10 -> C10 iso mappings.");
 
   checkSub(c5,petersen,c5_col,petersen_col1,false,
       "There should exist a C5->Petersen mapping.");

@@ -66,6 +66,9 @@ namespace lemon {
            class M2 = typename G2::template NodeMap<int> >
 #endif
   class Vf2pp {
+    template<class T>
+    friend class Vf2ppWizard;
+
     //The graph to be embedded
     const G1 &_g1;
 
@@ -118,7 +121,6 @@ namespace lemon {
 
     //indicates whether the mapping or the labels must be deleted in the destructor
     bool _deallocMappingAfterUse,_deallocLabelsAfterUse;
-
 
     //improved cutting function
     template<MappingType MT>
@@ -778,7 +780,7 @@ namespace lemon {
       if(Base::_local_mapping)
         ptr->_deallocMappingAfterUse=true;
       if(Base::_local_nodeLabels)
-        ptr->_deallocLabelMapsAfterUse=true;
+        ptr->_deallocLabelsAfterUse=true;
 
       return ptr;
     }

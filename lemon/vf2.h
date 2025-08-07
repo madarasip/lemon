@@ -98,6 +98,9 @@ namespace lemon {
            class NEQ = bits::vf2::AlwaysEq >
 #endif
   class Vf2 {
+    template<class T>
+    friend class Vf2Wizard;
+
     //The graph to be embedded
     const G1 &_g1;
 
