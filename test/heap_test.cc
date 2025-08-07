@@ -255,6 +255,18 @@ int main() {
     typedef BinomialHeap<Prio, IntNodeMap > NodeHeap;
     checkConcept<Heap<Prio, IntNodeMap >, NodeHeap>();
     dijkstraHeapTest<NodeHeap>(digraph, length, source);
+
+    {
+      ListDigraph g;
+      ListDigraph::Node v0 = g.addNode();
+      ListDigraph::Node v1 = g.addNode();
+      ListDigraph::NodeMap<int> ref(g,-1);
+      lemon::BinomialHeap<int,ListDigraph::NodeMap<int> > h(ref);
+      h.push(v0,0);
+      h.push(v1,0);
+      h.pop();
+      h.pop();
+    }
   }
 
   // BucketHeap, SimpleBucketHeap

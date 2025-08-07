@@ -174,7 +174,7 @@ namespace lemon {
         _min=i;
       } else {
         merge(i);
-        if( _comp(_data[i].prio, _data[_min].prio) ) _min=i;
+        _min=findMin();
       }
       ++_num_items;
     }
