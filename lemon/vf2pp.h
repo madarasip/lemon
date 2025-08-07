@@ -223,19 +223,21 @@ namespace lemon {
         for(typename G1::IncEdgeIt e1(_g1,n1); e1!=INVALID; ++e1) {
           const typename G2::Node& currNodePair =
             _mapping[_g1.oppositeNode(n1,e1)];
-          int& connCurrNodePair=_conn[currNodePair];
-          if(currNodePair!=INVALID&&connCurrNodePair!=-1) {
-            switch(MT){
-            case INDUCED:
-            case ISOMORPH:
-              isIso=0;
-              break;
-            case SUBGRAPH:
-              if(connCurrNodePair<-1)
+          if(currNodePair!=INVALID) {
+            int& connCurrNodePair=_conn[currNodePair];
+            if(connCurrNodePair!=-1) {
+              switch(MT){
+              case INDUCED:
+              case ISOMORPH:
                 isIso=0;
-              break;
+                break;
+              case SUBGRAPH:
+                if(connCurrNodePair<-1)
+                  isIso=0;
+                break;
+              }
+              connCurrNodePair=-1;
             }
-            connCurrNodePair=-1;
           }
         }
       else
