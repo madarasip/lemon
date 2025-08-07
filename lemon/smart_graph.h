@@ -39,12 +39,10 @@ namespace lemon {
     struct NodeT
     {
       int first_in, first_out;
-      NodeT() {}
     };
     struct ArcT
     {
       int target, source, next_in, next_out;
-      ArcT() {}
     };
 
     std::vector<NodeT> _nodes;
@@ -74,9 +72,7 @@ namespace lemon {
 
     Node addNode() {
       int n = _nodes.size();
-      _nodes.push_back(NodeT());
-      _nodes[n].first_in = -1;
-      _nodes[n].first_out = -1;
+      _nodes.push_back(NodeT{-1, -1});
       return Node(n);
     }
 

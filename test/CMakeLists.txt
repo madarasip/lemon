@@ -57,6 +57,8 @@ SET(TESTS
   vf2_test
 )
 
+SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-array-bounds")
+
 IF(LEMON_HAVE_LP)
   IF(${CMAKE_BUILD_TYPE} STREQUAL "Maintainer")
     ADD_EXECUTABLE(lp_test lp_test.cc)

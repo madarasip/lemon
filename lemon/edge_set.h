@@ -1087,7 +1087,6 @@ namespace lemon {
     struct ArcT {
       Node target;
       int next_out;
-      ArcT() {}
     };
 
     std::vector<ArcT> arcs;
@@ -1141,16 +1140,10 @@ namespace lemon {
 
     Edge addEdge(const Node& u, const Node& v) {
       int n = arcs.size();
-      arcs.push_back(ArcT());
-      arcs.push_back(ArcT());
+      arcs.push_back(ArcT{u, (*_nodes)[v].first_out});
+      arcs.push_back(ArcT{v, (*_nodes)[u].first_out});
 
-      arcs[n].target = u;
-      arcs[n | 1].target = v;
-
-      arcs[n].next_out = (*_nodes)[v].first_out;
       (*_nodes)[v].first_out = n;
-
-      arcs[n | 1].next_out = (*_nodes)[u].first_out;
       (*_nodes)[u].first_out = (n | 1);
 
       return Edge(n / 2);

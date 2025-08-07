@@ -295,6 +295,7 @@ void checkVf2ppCompile() {
 
   auto* vf2ppPtr = vf2pp(g, h).mapping(r).nodeLabels(c1, c2).induced()
     .getPtrToVf2ppObject();
+  ::lemon::ignore_unused_variable_warning(vf2ppPtr);
 }
 
 void vf2ppCompile() {
