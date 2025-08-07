@@ -243,6 +243,28 @@ int main() {
     typedef RadixHeap<IntNodeMap > NodeHeap;
     checkConcept<Heap<Prio, IntNodeMap >, NodeHeap>();
     dijkstraHeapTest<NodeHeap>(digraph, length, source);
+
+    {
+      const int n = 10; // max num items
+      const int c = 10; // max key
+
+      lemon::RangeMap<int> map(n, -1);
+      lemon::RadixHeap<lemon::RangeMap<int>> heap(map, 0, c);
+
+      heap.push(0, 2);
+      heap.push(1, 3);
+      heap.push(2, 4);
+
+      // keys: 2 3 4
+      check(heap.prio() == 2, "Wrong min element in Radix heap test.");
+      heap.pop();
+      // keys: - 5 4
+      heap.increase(1, 5);
+      check(heap.prio() == 4, "Wrong min element in Radix heap test.");
+      heap.pop();
+      // keys: - 5 -
+      check(heap.prio() == 5, "Wrong min element in Radix heap test.");
+    }
   }
 
   // BinomialHeap

@@ -23,11 +23,12 @@
 ///\file
 ///\brief Radix heap implementation.
 
+#include <limits>
 #include <vector>
+
 #include <lemon/error.h>
 
 namespace lemon {
-
 
   /// \ingroup heaps
   ///
@@ -45,7 +46,6 @@ namespace lemon {
   class RadixHeap {
 
   public:
-
     /// Type of the item-int map.
     typedef IM ItemIntMap;
     /// Type of the priorities.
@@ -80,7 +80,6 @@ namespace lemon {
     };
 
   private:
-
     struct RadixItem {
       int prev, next, box;
       Item item;
@@ -88,19 +87,14 @@ namespace lemon {
       RadixItem(Item _item, int _prio) : item(_item), prio(_prio) {}
     };
 
-    struct RadixBox {
-      int first;
-      int min, size;
-      RadixBox(int _min, int _size) : first(-1), min(_min), size(_size) {}
-    };
-
     std::vector<RadixItem> _data;
-    std::vector<RadixBox> _boxes;
+    std::vector<int> _boxes;  // first element of the box
+    std::vector<int> _bounds; // box[i] contains elements from b[i]+1 to
+    // b_[i+1]
 
     ItemIntMap &_iim;
 
   public:
-
     /// \brief Constructor.
     ///
     /// Constructor.
@@ -112,11 +106,15 @@ namespace lemon {
     RadixHeap(ItemIntMap &map, int minimum = 0, int capacity = 0)
       : _iim(map)
     {
-      _boxes.push_back(RadixBox(minimum, 1));
-      _boxes.push_back(RadixBox(minimum + 1, 1));
-      while (lower(_boxes.size() - 1, capacity + minimum - 1)) {
-        extend();
+      _bounds.push_back(minimum - 1);
+      _bounds.push_back(minimum);
+      int cap = 2;
+      while (_bounds.back() < capacity) {
+        _bounds.push_back(cap - 1);
+        cap *= 2;
       }
+      _bounds.push_back(std::numeric_limits<int>::max());
+      _boxes.resize(_bounds.size(), -1);
     }
 
     /// \brief The number of items stored in the heap.
@@ -140,29 +138,26 @@ namespace lemon {
     /// \param capacity The capacity of the heap.
     void clear(int minimum = 0, int capacity = 0) {
       _data.clear(); _boxes.clear();
-      _boxes.push_back(RadixBox(minimum, 1));
-      _boxes.push_back(RadixBox(minimum + 1, 1));
-      while (lower(_boxes.size() - 1, capacity + minimum - 1)) {
-        extend();
-      }
+      _bounds.clear();
+      _bounds.push_back(minimum - 1);
+      _bounds.push_back(minimum);
+      int cap = 2;
+      while (_bounds.back() < capacity)
+        {
+          _bounds.push_back(cap - 1);
+          cap *= 2;
+        }
+      _bounds.push_back(std::numeric_limits<int>::max());
+      _boxes.resize(_bounds.size(), -1);
     }
 
   private:
-
-    bool upper(int box, Prio pr) {
-      return pr < _boxes[box].min;
-    }
-
-    bool lower(int box, Prio pr) {
-      return pr >= _boxes[box].min + _boxes[box].size;
-    }
-
     // Remove item from the box list
     void remove(int index) {
       if (_data[index].prev >= 0) {
         _data[_data[index].prev].next = _data[index].next;
       } else {
-        _boxes[_data[index].box].first = _data[index].next;
+        _boxes[_data[index].box] = _data[index].next;
       }
       if (_data[index].next >= 0) {
         _data[_data[index].next].prev = _data[index].prev;
@@ -171,54 +166,47 @@ namespace lemon {
 
     // Insert item into the box list
     void insert(int box, int index) {
-      if (_boxes[box].first == -1) {
-        _boxes[box].first = index;
+      if (_boxes[box] == -1) { // if the box is empty
+        _boxes[box] = index;
         _data[index].next = _data[index].prev = -1;
       } else {
-        _data[index].next = _boxes[box].first;
-        _data[_boxes[box].first].prev = index;
+        _data[index].next = _boxes[box];
+        _data[_boxes[box]].prev = index;
         _data[index].prev = -1;
-        _boxes[box].first = index;
+        _boxes[box] = index;
       }
       _data[index].box = box;
     }
 
-    // Add a new box to the box list
-    void extend() {
-      int min = _boxes.back().min + _boxes.back().size;
-      int bs = 2 * _boxes.back().size;
-      _boxes.push_back(RadixBox(min, bs));
-    }
-
-    // Move an item up into the proper box.
+    // Move an item up into the proper box (for set and increase)
     void bubbleUp(int index) {
-      if (!lower(_data[index].box, _data[index].prio)) return;
+      if (_bounds[_data[index].box + 1] > _data[index].prio) return;
       remove(index);
-      int box = findUp(_data[index].box, _data[index].prio);
+      int box = findUp(_data[index].box + 1, _data[index].prio);
       insert(box, index);
     }
 
     // Find up the proper box for the item with the given priority
     int findUp(int start, int pr) {
-      while (lower(start, pr)) {
-        if (++start == int(_boxes.size())) {
-          extend();
-        }
+      while (_bounds[start + 1] < pr) {
+        ++start;
       }
       return start;
     }
 
-    // Move an item down into the proper box
+    // Move an item down into the proper box (for set and decrease)
     void bubbleDown(int index) {
-      if (!upper(_data[index].box, _data[index].prio)) return;
+      if (_bounds[_data[index].box] < _data[index].prio)
+        return;
+      if (_data[index].box == 0) throw PriorityUnderflowError();
       remove(index);
-      int box = findDown(_data[index].box, _data[index].prio);
+      int box = findDown(_data[index].box - 1, _data[index].prio);
       insert(box, index);
     }
 
     // Find down the proper box for the item with the given priority
     int findDown(int start, int pr) {
-      while (upper(start, pr)) {
+      while (_bounds[start] + 1 > pr) {
         if (--start < 0) throw PriorityUnderflowError();
       }
       return start;
@@ -227,14 +215,14 @@ namespace lemon {
     // Find the first non-empty box
     int findFirst() {
       int first = 0;
-      while (_boxes[first].first == -1) ++first;
+      while (_boxes[first] == -1) ++first;
       return first;
     }
 
     // Gives back the minimum priority of the given box
     int minValue(int box) {
-      int min = _data[_boxes[box].first].prio;
-      for (int k = _boxes[box].first; k != -1; k = _data[k].next) {
+      int min = _data[_boxes[box]].prio;
+      for (int k = _boxes[box]; k != -1; k = _data[k].next) {
         if (_data[k].prio < min) min = _data[k].prio;
       }
       return min;
@@ -245,11 +233,22 @@ namespace lemon {
       int box = findFirst();
       if (box == 0) return;
       int min = minValue(box);
-      for (int i = 0; i <= box; ++i) {
-        _boxes[i].min = min;
-        min += _boxes[i].size;
+
+      _bounds[0] = min - 1;
+      _bounds[1] = min;
+      int i = 2;
+      int new_bound = min + 1;
+      while (new_bound < _bounds[box + 1] && i <= box) {
+        _bounds[i] = new_bound;
+        ++i;
+        new_bound = _bounds[i - 1] + (1 << (i - 2));
       }
-      int curr = _boxes[box].first, next;
+      for (; i <= box; ++i) {
+        _bounds[i] = _bounds[box + 1];
+      }
+
+      int curr = _boxes[box];
+      int next;
       while (curr != -1) {
         next = _data[curr].next;
         bubbleDown(curr);
@@ -257,13 +256,14 @@ namespace lemon {
       }
     }
 
+    // Remove the index from _data
     void relocateLast(int index) {
       if (index != int(_data.size()) - 1) {
         _data[index] = _data.back();
         if (_data[index].prev != -1) {
           _data[_data[index].prev].next = index;
         } else {
-          _boxes[_data[index].box].first = index;
+          _boxes[_data[index].box] = index;
         }
         if (_data[index].next != -1) {
           _data[_data[index].next].prev = index;
@@ -274,7 +274,6 @@ namespace lemon {
     }
 
   public:
-
     /// \brief Insert an item into the heap with the given priority.
     ///
     /// This function inserts the given item into the heap with the
@@ -287,9 +286,6 @@ namespace lemon {
       int n = _data.size();
       _iim.set(i, n);
       _data.push_back(RadixItem(i, p));
-      while (lower(_boxes.size() - 1, p)) {
-        extend();
-      }
       int box = findDown(_boxes.size() - 1, p);
       insert(box, n);
     }
@@ -300,7 +296,7 @@ namespace lemon {
     /// \pre The heap must be non-empty.
     Item top() const {
       const_cast<RadixHeap<ItemIntMap>&>(*this).moveDown();
-      return _data[_boxes[0].first].item;
+      return _data[_boxes[0]].item;
     }
 
     /// \brief The minimum priority.
@@ -309,8 +305,8 @@ namespace lemon {
     /// \pre The heap must be non-empty.
     Prio prio() const {
       const_cast<RadixHeap<ItemIntMap>&>(*this).moveDown();
-      return _data[_boxes[0].first].prio;
-     }
+      return _data[_boxes[0]].prio;
+    }
 
     /// \brief Remove the item having minimum priority.
     ///
@@ -318,7 +314,7 @@ namespace lemon {
     /// \pre The heap must be non-empty.
     void pop() {
       moveDown();
-      int index = _boxes[0].first;
+      int index = _boxes[0];
       _iim[_data[index].item] = POST_HEAP;
       remove(index);
       relocateLast(index);
@@ -335,7 +331,7 @@ namespace lemon {
       _iim[i] = POST_HEAP;
       remove(index);
       relocateLast(index);
-   }
+    }
 
     /// \brief The priority of the given item.
     ///
