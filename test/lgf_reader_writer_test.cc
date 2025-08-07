@@ -50,13 +50,15 @@ void checkDigraphReaderCompile() {
   Digraph::Arc arc;
   int attr;
 
+  ReaderConverter rc;
+
   lemon::DigraphReader<Digraph> reader(digraph, "filename");
   reader.nodeMap("node_map", node_map);
-  reader.nodeMap("node_map", node_map, ReaderConverter());
+  reader.nodeMap("node_map", node_map, rc);
   reader.arcMap("arc_map", arc_map);
-  reader.arcMap("arc_map", arc_map, ReaderConverter());
+  reader.arcMap("arc_map", arc_map, rc);
   reader.attribute("attr", attr);
-  reader.attribute("attr", attr, ReaderConverter());
+  reader.attribute("attr", attr, rc);
   reader.node("node", node);
   reader.arc("arc", arc);
 
@@ -118,15 +120,17 @@ void checkGraphReaderCompile() {
   Graph::Edge edge;
   int attr;
 
+  ReaderConverter rc;
+
   lemon::GraphReader<Graph> reader(graph, "filename");
   reader.nodeMap("node_map", node_map);
-  reader.nodeMap("node_map", node_map, ReaderConverter());
+  reader.nodeMap("node_map", node_map, rc);
   reader.arcMap("arc_map", arc_map);
-  reader.arcMap("arc_map", arc_map, ReaderConverter());
+  reader.arcMap("arc_map", arc_map, rc);
   reader.edgeMap("edge_map", edge_map);
-  reader.edgeMap("edge_map", edge_map, ReaderConverter());
+  reader.edgeMap("edge_map", edge_map, rc);
   reader.attribute("attr", attr);
-  reader.attribute("attr", attr, ReaderConverter());
+  reader.attribute("attr", attr, rc);
   reader.node("node", node);
   reader.arc("arc", arc);
 
@@ -199,19 +203,21 @@ void checkBpGraphReaderCompile() {
   BpGraph::Edge edge;
   int attr;
 
+  ReaderConverter rc;
+
   lemon::BpGraphReader<BpGraph> reader(graph, "filename");
   reader.nodeMap("node_map", node_map);
-  reader.nodeMap("node_map", node_map, ReaderConverter());
+  reader.nodeMap("node_map", node_map, rc);
   reader.redNodeMap("red_node_map", red_node_map);
-  reader.redNodeMap("red_node_map", red_node_map, ReaderConverter());
+  reader.redNodeMap("red_node_map", red_node_map, rc);
   reader.blueNodeMap("blue_node_map", blue_node_map);
-  reader.blueNodeMap("blue_node_map", blue_node_map, ReaderConverter());
+  reader.blueNodeMap("blue_node_map", blue_node_map, rc);
   reader.arcMap("arc_map", arc_map);
-  reader.arcMap("arc_map", arc_map, ReaderConverter());
+  reader.arcMap("arc_map", arc_map, rc);
   reader.edgeMap("edge_map", edge_map);
-  reader.edgeMap("edge_map", edge_map, ReaderConverter());
+  reader.edgeMap("edge_map", edge_map, rc);
   reader.attribute("attr", attr);
-  reader.attribute("attr", attr, ReaderConverter());
+  reader.attribute("attr", attr, rc);
   reader.node("node", node);
   reader.redNode("red_node", red_node);
   reader.blueNode("blue_node", blue_node);
@@ -328,14 +334,16 @@ void checkDigraphReaderWriter() {
   std::istringstream is(os.str());
   lemon::DigraphReader<ExpDigraph> reader(exp_digraph, is);
 
+  ReaderConverter rc;
+
   reader.nodeMap("node_map1", exp_node_map1);
-  reader.nodeMap("node_map2", exp_node_map2, ReaderConverter());
+  reader.nodeMap("node_map2", exp_node_map2, rc);
   reader.arcMap("arc_map1", exp_arc_map1);
-  reader.arcMap("arc_map2", exp_arc_map2, ReaderConverter());
+  reader.arcMap("arc_map2", exp_arc_map2, rc);
   reader.node("node", exp_n2);
   reader.arc("arc", exp_a1);
   reader.attribute("attr1", exp_attr1);
-  reader.attribute("attr2", exp_attr2, ReaderConverter());
+  reader.attribute("attr2", exp_attr2, rc);
 
   reader.run();
 
@@ -379,17 +387,22 @@ void checkGraphReaderWriter() {
   std::ostringstream os;
   lemon::GraphWriter<Graph> writer(graph, os);
 
+  WriterConverter wc;
+
   writer.nodeMap("node_map1", node_map);
-  writer.nodeMap("node_map2", node_map, WriterConverter());
+  writer.nodeMap("node_map2", node_map, wc);
   writer.edgeMap("edge_map1", edge_map);
-  writer.edgeMap("edge_map2", edge_map, WriterConverter());
+  writer.edgeMap("edge_map2", edge_map, wc);
   writer.arcMap("arc_map1", arc_map);
-  writer.arcMap("arc_map2", arc_map, WriterConverter());
+  writer.arcMap("arc_map2", arc_map, wc);
   writer.node("node", n2);
   writer.edge("edge", e1);
-  writer.arc("arc", graph.direct(e1, false));
+
+  auto a = graph.direct(e1, false);
+  writer.arc("arc", a);
   writer.attribute("attr1", attr);
-  writer.attribute("attr2", attr, WriterConverter());
+
+  writer.attribute("attr2", attr, wc);
 
   writer.run();
 
@@ -410,17 +423,19 @@ void checkGraphReaderWriter() {
   std::istringstream is(os.str());
   lemon::GraphReader<ExpGraph> reader(exp_graph, is);
 
+  ReaderConverter rc;
+
   reader.nodeMap("node_map1", exp_node_map1);
-  reader.nodeMap("node_map2", exp_node_map2, ReaderConverter());
+  reader.nodeMap("node_map2", exp_node_map2, rc);
   reader.edgeMap("edge_map1", exp_edge_map1);
-  reader.edgeMap("edge_map2", exp_edge_map2, ReaderConverter());
+  reader.edgeMap("edge_map2", exp_edge_map2, rc);
   reader.arcMap("arc_map1", exp_arc_map1);
-  reader.arcMap("arc_map2", exp_arc_map2, ReaderConverter());
+  reader.arcMap("arc_map2", exp_arc_map2, rc);
   reader.node("node", exp_n2);
   reader.edge("edge", exp_e1);
   reader.arc("arc", exp_a1);
   reader.attribute("attr1", exp_attr1);
-  reader.attribute("attr2", exp_attr2, ReaderConverter());
+  reader.attribute("attr2", exp_attr2, rc);
 
   reader.run();
 
@@ -481,23 +496,28 @@ void checkBpGraphReaderWriter() {
   std::ostringstream os;
   lemon::BpGraphWriter<Graph> writer(graph, os);
 
+  WriterConverter wc;
+
   writer.nodeMap("node_map1", node_map);
-  writer.nodeMap("node_map2", node_map, WriterConverter());
+  writer.nodeMap("node_map2", node_map, wc);
   writer.nodeMap("red_node_map1", red_node_map);
-  writer.nodeMap("red_node_map2", red_node_map, WriterConverter());
+  writer.nodeMap("red_node_map2", red_node_map, wc);
   writer.nodeMap("blue_node_map1", blue_node_map);
-  writer.nodeMap("blue_node_map2", blue_node_map, WriterConverter());
+  writer.nodeMap("blue_node_map2", blue_node_map, wc);
   writer.edgeMap("edge_map1", edge_map);
-  writer.edgeMap("edge_map2", edge_map, WriterConverter());
+  writer.edgeMap("edge_map2", edge_map, wc);
   writer.arcMap("arc_map1", arc_map);
-  writer.arcMap("arc_map2", arc_map, WriterConverter());
+  writer.arcMap("arc_map2", arc_map, wc);
   writer.node("node", n);
   writer.redNode("red_node", rn1);
   writer.blueNode("blue_node", bn2);
   writer.edge("edge", e1);
-  writer.arc("arc", graph.direct(e1, false));
+
+  auto a = graph.direct(e1, false);
+  writer.arc("arc", a);
+
   writer.attribute("attr1", attr);
-  writer.attribute("attr2", attr, WriterConverter());
+  writer.attribute("attr2", attr, wc);
 
   writer.run();
 
@@ -524,23 +544,25 @@ void checkBpGraphReaderWriter() {
   std::istringstream is(os.str());
   lemon::BpGraphReader<ExpGraph> reader(exp_graph, is);
 
+  ReaderConverter rc;
+
   reader.nodeMap("node_map1", exp_node_map1);
-  reader.nodeMap("node_map2", exp_node_map2, ReaderConverter());
+  reader.nodeMap("node_map2", exp_node_map2, rc);
   reader.redNodeMap("red_node_map1", exp_red_node_map1);
-  reader.redNodeMap("red_node_map2", exp_red_node_map2, ReaderConverter());
+  reader.redNodeMap("red_node_map2", exp_red_node_map2, rc);
   reader.blueNodeMap("blue_node_map1", exp_blue_node_map1);
-  reader.blueNodeMap("blue_node_map2", exp_blue_node_map2, ReaderConverter());
+  reader.blueNodeMap("blue_node_map2", exp_blue_node_map2, rc);
   reader.edgeMap("edge_map1", exp_edge_map1);
-  reader.edgeMap("edge_map2", exp_edge_map2, ReaderConverter());
+  reader.edgeMap("edge_map2", exp_edge_map2, rc);
   reader.arcMap("arc_map1", exp_arc_map1);
-  reader.arcMap("arc_map2", exp_arc_map2, ReaderConverter());
+  reader.arcMap("arc_map2", exp_arc_map2, rc);
   reader.node("node", exp_n);
   reader.redNode("red_node", exp_rn1);
   reader.blueNode("blue_node", exp_bn2);
   reader.edge("edge", exp_e1);
   reader.arc("arc", exp_a1);
   reader.attribute("attr1", exp_attr1);
-  reader.attribute("attr2", exp_attr2, ReaderConverter());
+  reader.attribute("attr2", exp_attr2, rc);
 
   reader.run();
 
