@@ -87,6 +87,9 @@ void checkGraphBuild() {
   checkGraphNodeMap(G);
   checkGraphArcMap(G);
   checkGraphEdgeMap(G);
+
+  G.addEdge(n3, n3);
+  checkGraphIncEdgeArcLists(G, n3, 3);
 }
 
 template <class Graph>

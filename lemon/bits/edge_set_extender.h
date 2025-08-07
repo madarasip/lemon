@@ -524,6 +524,44 @@ namespace lemon {
       return LemonRangeWrapper2<IncEdgeIt, Graph, Node>(*this, u);
     }
 
+    class TrueIncEdgeIt : public IncEdgeIt {
+      friend class EdgeSetExtender;
+      using IncEdgeIt::graph;
+      using IncEdgeIt::direction;
+
+      void findFirstNonInLoop() {
+        while(direction
+              && *this != INVALID
+              && graph->u(*this) == graph->v(*this)) {
+          graph->nextInc(*this, direction);
+        }
+      }
+    public:
+
+      TrueIncEdgeIt() { }
+
+      TrueIncEdgeIt(Invalid i) : IncEdgeIt(i) { }
+
+      TrueIncEdgeIt(const Graph& _graph, const Node &n) : IncEdgeIt(_graph, n) {
+        findFirstNonInLoop();
+      }
+
+      TrueIncEdgeIt(const Graph& _graph, const Edge &ue, const Node &n)
+        : IncEdgeIt(_graph, ue, n) {
+        findFirstNonInLoop();
+      }
+
+      TrueIncEdgeIt& operator++() {
+        graph->nextInc(*this, direction);
+        findFirstNonInLoop();
+        return *this;
+      }
+    };
+
+    LemonRangeWrapper2<TrueIncEdgeIt, Graph, Node> trueIncEdges(const Node& u) const {
+      return LemonRangeWrapper2<TrueIncEdgeIt, Graph, Node>(*this, u);
+    }
+
     // \brief Base node of the iterator
     //
     // Returns the base node (ie. the source in this case) of the iterator
@@ -562,6 +600,19 @@ namespace lemon {
     //
     // Returns the running node of the iterator
     Node runningNode(const IncEdgeIt &e) const {
+      return e.direction ? this->v(e) : this->u(e);
+    }
+
+    // Base node of the iterator
+    //
+    // Returns the base node of the iterator
+    Node baseNode(const TrueIncEdgeIt &e) const {
+      return e.direction ? this->u(e) : this->v(e);
+    }
+    // Running node of the iterator
+    //
+    // Returns the running node of the iterator
+    Node runningNode(const TrueIncEdgeIt &e) const {
       return e.direction ? this->v(e) : this->u(e);
     }
 

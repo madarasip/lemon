@@ -571,6 +571,7 @@ namespace lemon {
 
     class IncEdgeIt : public Parent::Edge {
       friend class GraphExtender;
+    protected:
       const Graph* _graph;
       bool _direction;
     public:
@@ -596,6 +597,47 @@ namespace lemon {
 
     LemonRangeWrapper2<IncEdgeIt, Graph, Node> incEdges(const Node& u) const {
       return LemonRangeWrapper2<IncEdgeIt, Graph, Node>(*this, u);
+    }
+
+
+    class TrueIncEdgeIt : public IncEdgeIt {
+      friend class GraphExtender;
+      using IncEdgeIt::_graph;
+      using IncEdgeIt::_direction;
+
+      void findFirstNonInLoop() {
+        while(_direction
+              && *this != INVALID
+              && _graph->u(*this) == _graph->v(*this)) {
+          _graph->nextInc(*this, _direction);
+        }
+      }
+    public:
+
+      TrueIncEdgeIt() { }
+
+      TrueIncEdgeIt(Invalid i) : IncEdgeIt(i) { }
+
+      TrueIncEdgeIt(const Graph& graph, const Node &node)
+        : IncEdgeIt(graph, node) {
+        findFirstNonInLoop();
+      }
+
+      TrueIncEdgeIt(const Graph& graph, const Edge &edge, const Node &node)
+        : IncEdgeIt(graph, edge, node) {
+        findFirstNonInLoop();
+      }
+
+      TrueIncEdgeIt& operator++() {
+        _graph->nextInc(*this, _direction);
+        findFirstNonInLoop();
+        return *this;
+      }
+    };
+
+    LemonRangeWrapper2<TrueIncEdgeIt, Graph, Node>
+    trueIncEdges(const Node& u) const {
+      return LemonRangeWrapper2<TrueIncEdgeIt, Graph, Node>(*this, u);
     }
 
 
@@ -637,6 +679,19 @@ namespace lemon {
     //
     // Returns the running node of the iterator
     Node runningNode(const IncEdgeIt &edge) const {
+      return edge._direction ? this->v(edge) : this->u(edge);
+    }
+
+    // Base node of the iterator
+    //
+    // Returns the base node of the iterator
+    Node baseNode(const TrueIncEdgeIt &edge) const {
+      return edge._direction ? this->u(edge) : this->v(edge);
+    }
+    // Running node of the iterator
+    //
+    // Returns the running node of the iterator
+    Node runningNode(const TrueIncEdgeIt &edge) const {
       return edge._direction ? this->v(edge) : this->u(edge);
     }
 
@@ -1142,8 +1197,17 @@ namespace lemon {
       }
     };
 
-    LemonRangeWrapper2<IncEdgeIt, BpGraph, Node> incEdges(const Node& u) const {
+    LemonRangeWrapper2<IncEdgeIt, BpGraph, Node>
+    incEdges(const Node& u) const {
       return LemonRangeWrapper2<IncEdgeIt, BpGraph, Node>(*this, u);
+    }
+
+
+    typedef IncEdgeIt TrueIncEdgeIt;
+
+    LemonRangeWrapper2<TrueIncEdgeIt, BpGraph, Node>
+    trueIncEdges(const Node& u) const {
+      return LemonRangeWrapper2<TrueIncEdgeIt, BpGraph, Node>(*this, u);
     }
 
 

@@ -408,6 +408,81 @@ namespace lemon {
       }
 
 
+      /// Iterator class for the incident edges of a node.
+
+      /// This iterator goes trough the incident undirected edges
+      /// of a certain node of a graph. Loop edges will be iterated once.
+      /// Its usage is quite simple, for example, you can compute the
+      /// degree (i.e. the number of incident edges) of a node \c n
+      /// in a graph \c g of type \c %Graph as follows.
+      ///
+      ///\code
+      /// int count=0;
+      /// for(Graph::TrueIncEdgeIt e(g, n); e!=INVALID; ++e) ++count;
+      ///\endcode
+      class TrueIncEdgeIt : public Edge {
+      public:
+        /// Default constructor
+
+        /// Default constructor.
+        /// \warning It sets the iterator to an undefined value.
+        TrueIncEdgeIt() { }
+        /// Copy constructor.
+
+        /// Copy constructor.
+        ///
+        TrueIncEdgeIt(const TrueIncEdgeIt& e) : Edge(e) { }
+        /// Assignment operator
+
+        /// Assignment operator.
+        ///
+        const TrueIncEdgeIt &operator=(const TrueIncEdgeIt&) { return *this; }
+
+        /// %Invalid constructor \& conversion.
+
+        /// Initializes the iterator to be invalid.
+        /// \sa Invalid for more details.
+        TrueIncEdgeIt(Invalid) { }
+        /// Sets the iterator to the first incident edge.
+
+        /// Sets the iterator to the first incident edge of the given node.
+        ///
+        TrueIncEdgeIt(const Graph&, const Node&) { }
+        /// Sets the iterator to the given edge.
+
+        /// Sets the iterator to the given edge of the given graph.
+        ///
+        TrueIncEdgeIt(const Graph&, const Edge&) { }
+        /// Next incident edge
+
+        /// Assign the iterator to the next incident edge
+        /// of the corresponding node.
+        TrueIncEdgeIt& operator++() { return *this; }
+      };
+
+      /// \brief Gets the collection of the incident undirected edges
+      ///  of a certain node of the graph.
+      ///
+      /// This function can be used for iterating on the
+      /// incident undirected edges of a certain node of the graph.
+      /// It returns a wrapped
+      /// TrueIncEdgeIt, which looks like an STL container
+      /// (by having begin() and end()) which you can use in range-based
+      /// for loops, STL algorithms, etc.
+      /// For example if g is a Graph and u is a Node, you can write:
+      ///\code
+      /// for(auto e: g.trueIncEdges(u))
+      ///   doSomething(e);
+      ///
+      /// //Using an STL algorithm:
+      /// copy(g.trueIncEdges(u).begin(), g.trueIncEdges(u).end(), vect.begin());
+      ///\endcode
+      LemonRangeWrapper2<TrueIncEdgeIt, Graph, Node>
+      trueIncEdges(const Node& u) const {
+        return LemonRangeWrapper2<TrueIncEdgeIt, Graph, Node>(*this, u);
+      }
+
+
       /// The arc type of the graph
 
       /// This class identifies a directed arc of the graph. It also serves
@@ -934,6 +1009,16 @@ namespace lemon {
       ///
       /// Returns the running node of the given incident edge iterator.
       Node runningNode(IncEdgeIt) const { return INVALID; }
+
+      /// \brief The base node of the iterator.
+      ///
+      /// Returns the base node of the given incident edge iterator.
+      Node baseNode(TrueIncEdgeIt) const { return INVALID; }
+
+      /// \brief The running node of the iterator.
+      ///
+      /// Returns the running node of the given incident edge iterator.
+      Node runningNode(TrueIncEdgeIt) const { return INVALID; }
 
       /// \brief The base node of the iterator.
       ///

@@ -574,6 +574,32 @@ namespace lemon {
       }
 
 
+      /// \brief Undirected graphs should provide \c TrueIncEdgeIt.
+      ///
+      /// Undirected graphs should provide \c TrueIncEdgeIt that iterates over
+      /// loops only once. Loops may not appear in bipartite graphs, hence this
+      /// is the same as \ref IncEdgeIt.
+      typedef IncEdgeIt TrueIncEdgeIt;
+
+      /// \brief Gets the collection of the incident edges
+      ///  of a certain node of the graph.
+      ///
+      /// This function can be used for iterating on the
+      /// incident undirected edges of a certain node of the graph.
+      /// It returns a wrapped
+      /// IncEdgeIt, which looks like an STL container
+      /// (by having begin() and end()) which you can use in range-based
+      /// for loops, stl algorithms, etc.
+      /// For example if g is a BpGraph and u is a Node, you can write:
+      ///\code
+      /// for(auto e: g.incEdges(u))
+      ///   doSomething(e);
+      ///\endcode
+      LemonRangeWrapper2<TrueIncEdgeIt, BpGraph, Node>
+      trueIncEdges(const Node& u) const {
+        return LemonRangeWrapper2<TrueIncEdgeIt, BpGraph, Node>(*this, u);
+      }
+
       /// The arc type of the graph
 
       /// This class identifies a directed arc of the graph. It also serves

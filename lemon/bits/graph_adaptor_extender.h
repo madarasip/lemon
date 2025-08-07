@@ -385,6 +385,7 @@ namespace lemon {
 
     class IncEdgeIt : public Edge {
       friend class GraphAdaptorExtender;
+    protected:
       const Adaptor* _adaptor;
       bool direction;
     public:
@@ -413,6 +414,47 @@ namespace lemon {
     }
 
 
+    class TrueIncEdgeIt : public IncEdgeIt {
+      friend class GraphAdaptorExtender;
+      using IncEdgeIt::_adaptor;
+      using IncEdgeIt::direction;
+
+      void findFirstNonInLoop() {
+        while(direction
+              && *this != INVALID
+              && _adaptor->u(*this) == _adaptor->v(*this)) {
+          _adaptor->nextInc(*this, direction);
+        }
+      }
+    public:
+
+      TrueIncEdgeIt() { }
+
+      TrueIncEdgeIt(Invalid i) : IncEdgeIt(i) { }
+
+      TrueIncEdgeIt(const Adaptor& adaptor, const Node &n)
+        : IncEdgeIt(adaptor, n) {
+        findFirstNonInLoop();
+      }
+
+      TrueIncEdgeIt(const Adaptor& adaptor, const Edge &e, const Node &n)
+        : IncEdgeIt(adaptor, e, n) {
+        findFirstNonInLoop();
+      }
+
+      TrueIncEdgeIt& operator++() {
+        _adaptor->nextInc(*this, direction);
+        findFirstNonInLoop();
+        return *this;
+      }
+    };
+
+    LemonRangeWrapper2<TrueIncEdgeIt, Adaptor, Node>
+    trueIncEdges(const Node& u) const {
+      return LemonRangeWrapper2<TrueIncEdgeIt, Adaptor, Node>(*this, u);
+    }
+
+
     Node baseNode(const OutArcIt &a) const {
       return Parent::source(a);
     }
@@ -431,6 +473,13 @@ namespace lemon {
       return e.direction ? Parent::u(e) : Parent::v(e);
     }
     Node runningNode(const IncEdgeIt &e) const {
+      return e.direction ? Parent::v(e) : Parent::u(e);
+    }
+
+    Node baseNode(const TrueIncEdgeIt &e) const {
+      return e.direction ? Parent::u(e) : Parent::v(e);
+    }
+    Node runningNode(const TrueIncEdgeIt &e) const {
       return e.direction ? Parent::v(e) : Parent::u(e);
     }
 

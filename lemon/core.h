@@ -139,6 +139,7 @@ namespace lemon {
   typedef Graph::Edge Edge;                                             \
   typedef Graph::EdgeIt EdgeIt;                                         \
   typedef Graph::IncEdgeIt IncEdgeIt;                                   \
+  typedef Graph::TrueIncEdgeIt TrueIncEdgeIt;                           \
   typedef Graph::EdgeMap<bool> BoolEdgeMap;                             \
   typedef Graph::EdgeMap<int> IntEdgeMap;                               \
   typedef Graph::EdgeMap<double> DoubleEdgeMap
@@ -154,6 +155,7 @@ namespace lemon {
   typedef typename Graph::Edge Edge;                                    \
   typedef typename Graph::EdgeIt EdgeIt;                                \
   typedef typename Graph::IncEdgeIt IncEdgeIt;                          \
+  typedef typename Graph::TrueIncEdgeIt TrueIncEdgeIt;                  \
   typedef typename Graph::template EdgeMap<bool> BoolEdgeMap;           \
   typedef typename Graph::template EdgeMap<int> IntEdgeMap;             \
   typedef typename Graph::template EdgeMap<double> DoubleEdgeMap
@@ -408,7 +410,7 @@ namespace lemon {
   /// This function counts the number of the out-arcs from node \c n
   /// in the graph \c g.
   template <typename Graph>
-  inline int countOutArcs(const Graph& g,  const typename Graph::Node& n) {
+  inline int countOutArcs(const Graph& g, const typename Graph::Node& n) {
     return countNodeDegree<Graph, typename Graph::OutArcIt>(g, n);
   }
 
@@ -417,17 +419,26 @@ namespace lemon {
   /// This function counts the number of the in-arcs to node \c n
   /// in the graph \c g.
   template <typename Graph>
-  inline int countInArcs(const Graph& g,  const typename Graph::Node& n) {
+  inline int countInArcs(const Graph& g, const typename Graph::Node& n) {
     return countNodeDegree<Graph, typename Graph::InArcIt>(g, n);
   }
 
   /// \brief Function to count the number of the inc-edges to node \c n.
   ///
   /// This function counts the number of the inc-edges to node \c n
-  /// in the undirected graph \c g.
+  /// in the undirected graph \c g. Loops will be counted twice.
   template <typename Graph>
-  inline int countIncEdges(const Graph& g,  const typename Graph::Node& n) {
+  inline int countIncEdges(const Graph& g, const typename Graph::Node& n) {
     return countNodeDegree<Graph, typename Graph::IncEdgeIt>(g, n);
+  }
+
+  /// \brief Function to count the number of the inc-edges to node \c n.
+  ///
+  /// This function counts the number of the inc-edges to node \c n
+  /// in the undirected graph \c g. Loops will be counted once.
+  template <typename Graph>
+  inline int countTrueIncEdges(const Graph& g, const typename Graph::Node& n) {
+    return countNodeDegree<Graph, typename Graph::TrueIncEdgeIt>(g, n);
   }
 
   namespace _core_bits {

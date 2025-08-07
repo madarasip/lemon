@@ -315,7 +315,55 @@ namespace lemon {
       check(a==INVALID,"Wrong STL IncEdge iterator.");
     }
 #endif
+  }
 
+  template<class Graph>
+  void checkGraphTrueIncEdgeList(const Graph &G, typename Graph::Node n)
+  {
+    int cntNumIncEdges = 0;
+    int cntNumLoops = 0;
+    for(auto e: G.incEdges(n)) {
+      ++cntNumIncEdges;
+      if(G.u(e) == G.v(e))
+        ++cntNumLoops;
+    }
+    check(countIncEdges(G, n)==cntNumIncEdges, "Wrong countIncEdges.");
+
+    cntNumLoops /= 2;
+    cntNumIncEdges -= cntNumLoops;
+
+    check(countTrueIncEdges(G, n)==cntNumIncEdges, "Wrong countTrueIncEdges.");
+
+    typename Graph::TrueIncEdgeIt e(G,n);
+    for(int i=0;i<cntNumIncEdges;i++) {
+      check(e!=INVALID,"Wrong IncEdge list linking.");
+      check(n==G.u(e) || n==G.v(e),"Wrong IncEdge list linking.");
+      check(n==G.baseNode(e),"Wrong OutArc list linking.");
+      check(G.u(e)==G.runningNode(e) || G.v(e)==G.runningNode(e),
+            "Wrong OutArc list linking.");
+      ++e;
+    }
+    check(e==INVALID,"Wrong IncEdge list linking.");
+#ifdef LEMON_CXX11
+    {
+      typename Graph::TrueIncEdgeIt a(G,n);
+      for(auto e: G.trueIncEdges(n))
+        {
+          check(a==e,"Wrong STL IncEdge iterator.");
+          ++a;
+        }
+      check(a==INVALID,"Wrong STL IncEdge iterator.");
+    }
+    {
+      typename Graph::TrueIncEdgeIt a(G,n);
+      for(typename Graph::Edge e: G.trueIncEdges(n))
+        {
+          check(a==e,"Wrong STL IncEdge iterator.");
+          ++a;
+        }
+      check(a==INVALID,"Wrong STL IncEdge iterator.");
+    }
+#endif
   }
 
   template <class Graph>
@@ -323,6 +371,7 @@ namespace lemon {
                                  int cnt)
   {
     checkGraphIncEdgeList(G, n, cnt);
+    checkGraphTrueIncEdgeList(G, n);
     checkGraphOutArcList(G, n, cnt);
     checkGraphInArcList(G, n, cnt);
   }
