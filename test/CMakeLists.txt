@@ -50,6 +50,7 @@ SET(TESTS
   planarity_test
   radix_sort_test
   random_test
+  sparsity_test
   suurballe_test
   time_measure_test
   tsp_test
