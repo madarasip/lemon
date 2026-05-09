@@ -292,7 +292,7 @@ namespace lemon {
     /// This template wraps an iterator and provides begin() and end() to make
     /// range-based for loops and STL algorithms work.
     ///
-    /// \tparam IT The type of the UniSparse iterator.
+    /// \tparam USI The type of the UniSparse iterator.
     /// \tparam CTOR The iterator constructor type.
     template<typename USI, typename... CTOR>
     class RangeWrapperMoveOnly {
@@ -534,11 +534,11 @@ namespace lemon {
     /// unisparse_bits::UpperRange and unisparse_bits::UnknownRange.
     using RangeSelector = unisparse_bits::UnknownRange;
 
-    /// \brief Set the constant 1 weight function.
+    /// \brief Compile-time flag for using constant 1 weights.
     ///
-    /// Set the constant 1 weight function. This is equivalent to setting
-    /// \res ConstMap<typename Graph::Edge, int>(1)
-    /// "ConstMap<Edge, int>(1)" as the WeightMap.
+    /// This flag is \c std::false_type by default. It is set to
+    /// \c std::true_type by \ref UniSparseComp::SetAllOneWeights, which makes
+    /// the algorithm use \c ConstMap<Edge,int>(1) as the weight map.
     using AllOneWeights = std::false_type;
 
     using IsSet_ToInputNodeMap = std::false_type;
@@ -632,7 +632,8 @@ namespace lemon {
     // The number of inserted edges (increased as edges are inserted).
     int _numInserted;
 
-    // Indicates whether init() has already been called.
+    // Indicates whether init() has already been called;
+    // named-parameter setters are invalid if true.
     bool _initialized;
 
     // The inner digraph constructed by the algorithm.
@@ -878,7 +879,7 @@ namespace lemon {
     /// It must conform to the \ref concepts::ReadWriteMap
     /// "ReadWriteMap" concept.
     /// \warning This node map must never be \c NullMap since it is written in
-    /// \ref UniSparseComp::init() and read during processing the edges.
+    /// \ref UniSparseSpec::init() and read during processing the edges.
     template<typename NM>
     struct SetToInnerNodeMap
       : public UniSparseSpec<Graph, SetToInnerNodeMapTraits<NM>> {
@@ -1657,7 +1658,7 @@ namespace lemon {
 
     /// @{
 
-    /// \brief Returns a const reference to the \c Digraph build by the
+    /// \brief Returns a const reference to the \c Digraph built by the
     /// algorithm.
     ///
     /// \return Const reference to the \ref UniSparseDefaultTraits::Digraph
@@ -1727,7 +1728,7 @@ namespace lemon {
     /// accepted edge.
     ///
     /// \code
-    ///   uss.run()
+    ///   uss.run();
     ///   for(const auto& e : uss.edgesOfSparse()) {
     ///     std::cout << g.id(e) << std::endl;
     ///   }
@@ -1782,7 +1783,7 @@ namespace lemon {
     ///
     /// \code
     ///   UniSparseSpec<ListGraph> uss(g, k);
-    ///   uss.run()
+    ///   uss.run();
     ///   for(const auto& e : uss.edgesOfSparse()) {
     ///     std::cout << g.id(e) << std::endl;
     ///   }
@@ -1800,7 +1801,7 @@ namespace lemon {
     ///   }
     /// \endcode
     ///
-    /// \pre The type of the node map \ref
+    /// \pre The type of the edge map \ref
     /// UniSparseDefaultTraits::ToInputEdgeMap "ToInputEdgeMap" of the
     /// underlying \ref UniSparseSpec class must not be \c NullMap.
     class SparseEdgeIt {
@@ -1868,7 +1869,7 @@ namespace lemon {
     ///   }
     /// \endcode
     ///
-    /// \pre The type of the node map \ref
+    /// \pre The type of the edge map \ref
     /// UniSparseDefaultTraits::ToInputEdgeMap "ToInputEdgeMap" of the
     /// underlying \ref UniSparseSpec class must not be \c NullMap.
     LemonRangeWrapper1<SparseEdgeIt, UniSparseSpec<GR, TR>>
@@ -1886,8 +1887,8 @@ namespace lemon {
     /// blocking the insertion. Processing any edge invalidates this iterator.
     ///
     /// The following snippet uses \ref nodesOfLastBlockingTight() to access
-    /// the node set of the blocking tight subgraph whenever
-    /// \ref processNextEdge() returns \c false, i.e. rejects an edge.
+    /// the node set of the blocking tight subgraph after \ref checkSparse()
+    /// returns \c false.
     ///
     /// \code
     ///   UniSparseSpec<ListGraph> uss(g, k);
@@ -1911,8 +1912,8 @@ namespace lemon {
     ///   }
     /// \endcode
     ///
-    /// \pre The type of the edge map \ref
-    /// UniSparseDefaultTraits::ToInputEdgeMap "ToInputEdgeMap" of the
+    /// \pre The type of the node map \ref
+    /// UniSparseDefaultTraits::ToInputNodeMap "ToInputNodeMap" of the
     /// underlying \ref UniSparseSpec class must not be \c NullMap.
     /// \warning If the latest edge has been accepted, then the blocking tight
     /// subgraph and hence the behavior is undefined!
@@ -1994,8 +1995,8 @@ namespace lemon {
     ///   }
     /// \endcode
     ///
-    /// \pre The type of the edge map \ref
-    /// UniSparseDefaultTraits::ToInputEdgeMap "ToInputEdgeMap" of the
+    /// \pre The type of the node map \ref
+    /// UniSparseDefaultTraits::ToInputNodeMap "ToInputNodeMap" of the
     /// underlying \ref UniSparseSpec class must not be \c NullMap.
     /// \warning If the latest edge has been accepted, then the blocking tight
     /// subgraph and hence the behavior is undefined!
@@ -2021,8 +2022,8 @@ namespace lemon {
     /// \code
     ///   UniSparseSpec<ListGraph> uss(g, k);
     ///   if(!uss.checkSparse()) {
-    ///     for(const auto& n : uss.edgesOfLastBlockingTight()) {
-    ///       std::cout << g.id(n) << std::endl;
+    ///     for(const auto& e : uss.edgesOfLastBlockingTight()) {
+    ///       std::cout << g.id(e) << std::endl;
     ///     }
     ///   }
     /// \endcode
@@ -2289,9 +2290,9 @@ namespace lemon {
     /// \brief Constants for selecting the heuristic.
     ///
     /// Enum type containing constants for selecting the heuristic for the \ref
-    /// run function in the unweighted case. \UniSparse provides 9 different
+    /// run function in the unweighted case. \c UniSparse provides 13 concrete
     /// heuristics for the processing order of the edges. These can only be
-    /// used in the unweighted case, except for BASIC.
+    /// used in the unweighted case, except for \ref BASIC.
     enum Heuristic {
 
       /// In the unweighted case, \ref TRANSP is called, in the weighted case,
@@ -3609,7 +3610,7 @@ namespace lemon {
     /// Constructor.
     /// \param g The undirected graph the algorithm runs on.
     /// \param k The parameter \f$ k \f$ of \f$ (k,l) \f$-sparsity.
-    /// \param l The parameter \f$ k \f$ of \f$ (k,l) \f$-sparsity.
+    /// \param l The parameter \f$ l \f$ of \f$ (k,l) \f$-sparsity.
     UniSparse(const Graph& g, const int k, const int l)
       : UniSparse(g, k, l, nullptr)
     {}
@@ -3619,7 +3620,7 @@ namespace lemon {
     /// Constructor.
     /// \param g The undirected graph the algorithm runs on.
     /// \param k The parameter \f$ k \f$ of \f$ (k,l) \f$-sparsity.
-    /// \param l The parameter \f$ k \f$ of \f$ (k,l) \f$-sparsity.
+    /// \param l The parameter \f$ l \f$ of \f$ (k,l) \f$-sparsity.
     /// \param w The edge map of the input graph storing the weights.
     UniSparse(const Graph& g, const int k, const int l, const WeightMap& w)
       : UniSparse(g, k, l, &w)
@@ -4424,7 +4425,7 @@ namespace lemon {
     /// iterate on the node set of an inclusion-wise minimal tight subgraph
     /// blocking the insertion. Processing any edge invalidates this iterator.
     ///
-    /// The following snippet uses \ref LastBlockingTightNodeIt to access
+    /// The following snippet uses \ref nodesOfLastBlockingTight() to access
     /// the node set of the blocking tight subgraph after \ref checkSparse()
     /// returns \c false.
     ///
@@ -4437,7 +4438,7 @@ namespace lemon {
     ///   }
     /// \endcode
     ///
-    /// Alternatively, \ref nodesOfLastBlockingTight() can be used for the same
+    /// Alternatively, \ref LastBlockingTightNodeIt can be used for the same
     /// purpose as follows.
     ///
     /// \code
@@ -4860,13 +4861,13 @@ namespace lemon {
     /// \brief Constants for selecting the heuristic.
     ///
     /// Enum type containing constants for selecting the heuristic for the \ref
-    /// run function in the unweighted case. \UniSparse provides 9 different
+    /// run function in the unweighted case. \c UniSparseComp provides 4 concrete
     /// heuristics for the processing order of the edges. These can only be
-    /// used in the unweighted case, except for \ref BASIC.
+    /// used in the unweighted case, except for \ref NODE_BASIC.
     enum Heuristic {
 
       /// In the unweighted case, \ref NODE_OUT_DEG_MIN is called, in the
-      /// weighted case, the \ref BASIC heuristic is called.
+      /// weighted case, the \ref NODE_BASIC heuristic is called.
       AUTO,
 
       /// The edges are processed in the order given by NodeIt and
@@ -5239,6 +5240,7 @@ namespace lemon {
     /// \param g The undirected graph the algorithm runs on.
     /// \param k The parameter \f$ k \f$ of \f$ (k,l) \f$-sparsity.
     /// \param l The parameter \f$ l \f$ of \f$ (k,l) \f$-sparsity.
+    /// \param w The edge map storing the weights.
     UniSparseComp(const Graph& g, const int k, const int l, const WeightMap& w)
       : UniSparseComp(g, k, l, &w)
     {}
@@ -5372,7 +5374,7 @@ namespace lemon {
     ///
     /// \code
     ///   usc.init();
-    ///   while(!usc.isAlldone()) {
+    ///   while(!usc.isAllDone()) {
     ///     usc.processNextEdge();
     ///   }
     /// \endcode
@@ -5501,7 +5503,7 @@ namespace lemon {
     {
       LEMON_ASSERT(u != INVALID, "Called initNode with INVALID node!");
       LEMON_ASSERT(upperRangeCase() && !weightedCase(),
-                   "initNode can only be called in the weighted l>k case!");
+                   "initNode can only be called in the unweighted l>k case!");
       _nodeIt = NodeIt(_inputGraph, u);
       upperInitCurrNode();
     }
@@ -5713,7 +5715,7 @@ namespace lemon {
       LEMON_ASSERT(heuristic == NODE_BASIC
                    || heuristic == AUTO
                    || !weightedCase(),
-                   "Only BASIC and AUTO are available in the weighted case!");
+                   "Only NODE_BASIC and AUTO are available in the weighted case!");
       switch(heuristic) {
       case AUTO:
         return checkSparse<Auto>();
@@ -6440,7 +6442,7 @@ namespace lemon {
     /// The following code demonstrates the usage of the wrapped iterator.
     ///
     /// \code
-    ///   for(const auto& n : us.nodesOfLastBlockingTight()) {
+    ///   for(const auto& n : usc.nodesOfLastBlockingTight()) {
     ///     std::cout << g.id(n) << std::endl;
     ///   }
     /// \endcode
@@ -6464,7 +6466,7 @@ namespace lemon {
     /// return \c INVALID, or \ref checkSparse() return \c false), one can
     /// iterate on the edge set of an inclusion-wise minimal tight subgraph
     /// blocking the insertion. The acceptance of any edge invalidates this
-    /// iterator. This iterator allocated a NodeMap<bool>, hence it takes
+    /// iterator. This iterator allocates a NodeMap<bool>, hence it takes
     /// linear space in the number of the nodes.
     ///
     /// The following snippet uses \ref edgesOfLastBlockingTight() to access
@@ -6779,7 +6781,7 @@ namespace lemon {
       /// \brief Returns the collection of the nodes of a component.
       ///
       /// This function can be used for iterating on the nodes of a
-      /// component. It returns a wrapped CompIt, which behaves as an STL
+      /// component. It returns a wrapped CompNodeIt, which behaves as an STL
       /// container and can be used in range-based for loops and STL
       /// algorithms. The acceptance of any edge invalidates this iterator.
       ///
@@ -6806,7 +6808,7 @@ namespace lemon {
       /// \brief Returns the collection of the edges of a component.
       ///
       /// This function can be used for iterating on the edges of a
-      /// component. It returns a wrapped CompIt, which behaves as an STL
+      /// component. It returns a wrapped CompEdgeIt, which behaves as an STL
       /// container and can be used in range-based for loops and STL
       /// algorithms. The acceptance of any edge invalidates this iterator.
       ///
@@ -7848,11 +7850,11 @@ namespace lemon {
     };
 
     /// \brief \ref named-templ-param "Named parameter" for setting
-    /// the \c ProcessingOrderContainer.
+    /// the \c ToInnerArcMap.
     ///
-    /// \ref named-templ-param "Named parameter" function for setting the
-    /// \c ProcessingOrderContainer in which the edges will be inserted and
-    /// sorted by their weights.
+    /// \ref named-templ-param "Named parameter" function for setting the edge
+    /// map that converts the edges of the input graph to the arcs of the inner
+    /// digraph.
     template<typename EM>
     UniSparseWizard<US, SetToInnerArcMap<EM>> toInnerArcMap(const EM& em)
     {
@@ -7876,11 +7878,11 @@ namespace lemon {
     };
 
     /// \brief \ref named-templ-param "Named parameter" for setting
-    /// the \c ToInnerArcMap.
+    /// the \c ProcessingOrderContainer.
     ///
-    /// \ref named-templ-param "Named parameter" function for setting the edge
-    /// map that converts the edges of the input graph to the arcs of the inner
-    /// digraph.
+    /// \ref named-templ-param "Named parameter" function for setting the
+    /// \c ProcessingOrderContainer in which the edges will be inserted and
+    /// sorted by their weights.
     template<typename POC>
     UniSparseWizard<US, SetProcessingOrderContainer<POC>>
     processingOrderContainer(const POC& poc)
@@ -8005,7 +8007,7 @@ namespace lemon {
     /// Runs the \ref UniSparse or \ref UniSparseComp algorithm to find the
     /// size of the largest \f$ (k,l) \f$-sparse subgraph.
     ///
-    /// \return The size of the largest \f$ (k,l) \f$-sparse.
+    /// \return The size of the largest \f$ (k,l) \f$-sparse subgraph.
     int maxSparseSize()
     {
       if(_l <= _k) {
@@ -8036,7 +8038,7 @@ namespace lemon {
     /// optimization, use \ref minimize().
     ///
     /// \return The maximum (or minimum) weight of the largest
-    /// \f$ (k,l) \f$-sparse.
+    /// \f$ (k,l) \f$-sparse subgraph.
     typename WeightMap::Value optSparseWeight()
     {
       if(_l <= _k) {
@@ -8063,8 +8065,7 @@ namespace lemon {
   /// \brief Function-type interface for UniSparseSpec class.
   ///
   /// \param g The undirected graph the algorithm runs on.
-  /// \param k The parameter \f$ k \f$ of \f$ (k,l) \f$-sparsity.
-  /// \param l The parameter \f$ l \f$ of \f$ (k,l) \f$-sparsity.
+  /// \param k The parameter \f$ k \f$ of \f$ (k,2k) \f$-sparsity.
   ///
   /// This function has several \ref named-func-param "named parameters",
   /// which are declared as the members of class \ref UniSparseSpecWizard.
@@ -8126,7 +8127,7 @@ namespace lemon {
                            UniSparseWizardBase<GR, WM>> (g, k, l, w);
   }
 
-  /// \brief Function-type interface for UniSparse class.
+  /// \brief Function-type interface for UniSparseComp class.
   ///
   /// \param g The undirected graph the algorithm runs on.
   /// \param k The parameter \f$ k \f$ of \f$ (k,l) \f$-sparsity.
@@ -8147,7 +8148,7 @@ namespace lemon {
     return UniSparseWizard<UniSparseComp, UniSparseWizardBase<GR>>(g, k, l);
   }
 
-  /// \brief Function-type interface for UniSparse class.
+  /// \brief Function-type interface for UniSparseComp class.
   ///
   /// \param g The undirected graph the algorithm runs on.
   /// \param k The parameter \f$ k \f$ of \f$ (k,l) \f$-sparsity.
