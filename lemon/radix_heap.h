@@ -89,10 +89,40 @@ namespace lemon {
 
     std::vector<RadixItem> _data;
     std::vector<int> _boxes;  // first element of the box
-    std::vector<int> _bounds; // box[i] contains elements from b[i]+1 to
-    // b_[i+1]
+    std::vector<int> _bounds; // box[i] contains elements from
+    // _bounds[i] + 1 to _bounds[i + 1]
 
     ItemIntMap &_iim;
+
+    void initBounds(int minimum, int capacity) {
+      if (minimum == std::numeric_limits<int>::min()) {
+        throw PriorityUnderflowError();
+      }
+
+      std::vector<int> bounds;
+      bounds.push_back(minimum - 1);
+      bounds.push_back(minimum);
+
+      long long cap = 2;
+      const long long int_max = std::numeric_limits<int>::max();
+      while (bounds.back() < capacity) {
+        long long next = static_cast<long long>(minimum) + cap - 1;
+        if (next <= bounds.back() || next >= int_max) {
+          bounds.push_back(std::numeric_limits<int>::max());
+          break;
+        }
+        bounds.push_back(static_cast<int>(next));
+        cap *= 2;
+      }
+
+      if (bounds.back() != std::numeric_limits<int>::max()) {
+        bounds.push_back(std::numeric_limits<int>::max());
+      }
+
+      std::vector<int> boxes(bounds.size() - 1, -1);
+      _bounds.swap(bounds);
+      _boxes.swap(boxes);
+    }
 
   public:
     /// \brief Constructor.
@@ -101,20 +131,15 @@ namespace lemon {
     /// \param map A map that assigns \c int values to the items.
     /// It is used internally to handle the cross references.
     /// The assigned value must be \c PRE_HEAP (<tt>-1</tt>) for each item.
-    /// \param minimum The initial minimum value of the heap.
+    /// \param minimum The initial minimum value of the heap. It must be
+    /// greater than \c std::numeric_limits<int>::min().
     /// \param capacity The initial capacity of the heap.
+    /// \warning This constructor may throw a \c PriorityUnderflowError if
+    /// \c minimum is \c std::numeric_limits<int>::min().
     RadixHeap(ItemIntMap &map, int minimum = 0, int capacity = 0)
       : _iim(map)
     {
-      _bounds.push_back(minimum - 1);
-      _bounds.push_back(minimum);
-      int cap = 2;
-      while (_bounds.back() < capacity) {
-        _bounds.push_back(cap - 1);
-        cap *= 2;
-      }
-      _bounds.push_back(std::numeric_limits<int>::max());
-      _boxes.resize(_bounds.size(), -1);
+      initBounds(minimum, capacity);
     }
 
     /// \brief The number of items stored in the heap.
@@ -134,21 +159,14 @@ namespace lemon {
     /// a heap that is not surely empty, you should first clear it and
     /// then you should set the cross reference map to \c PRE_HEAP
     /// for each item.
-    /// \param minimum The minimum value of the heap.
+    /// \param minimum The minimum value of the heap. It must be greater
+    /// than \c std::numeric_limits<int>::min().
     /// \param capacity The capacity of the heap.
+    /// \warning This method may throw a \c PriorityUnderflowError if
+    /// \c minimum is \c std::numeric_limits<int>::min().
     void clear(int minimum = 0, int capacity = 0) {
-      _data.clear(); _boxes.clear();
-      _bounds.clear();
-      _bounds.push_back(minimum - 1);
-      _bounds.push_back(minimum);
-      int cap = 2;
-      while (_bounds.back() < capacity)
-        {
-          _bounds.push_back(cap - 1);
-          cap *= 2;
-        }
-      _bounds.push_back(std::numeric_limits<int>::max());
-      _boxes.resize(_bounds.size(), -1);
+      initBounds(minimum, capacity);
+      _data.clear();
     }
 
   private:
@@ -179,15 +197,19 @@ namespace lemon {
     }
 
     // Move an item up into the proper box (for set and increase)
-    void bubbleUp(int index) {
-      if (_bounds[_data[index].box + 1] > _data[index].prio) return;
+    void bubbleUp(int index, int pr) {
+      if (_bounds[_data[index].box + 1] >= pr) {
+        _data[index].prio = pr;
+        return;
+      }
+      int box = findUp(_data[index].box + 1, pr);
+      _data[index].prio = pr;
       remove(index);
-      int box = findUp(_data[index].box + 1, _data[index].prio);
       insert(box, index);
     }
 
     // Find up the proper box for the item with the given priority
-    int findUp(int start, int pr) {
+    int findUp(int start, int pr) const {
       while (_bounds[start + 1] < pr) {
         ++start;
       }
@@ -195,37 +217,46 @@ namespace lemon {
     }
 
     // Move an item down into the proper box (for set and decrease)
-    void bubbleDown(int index) {
-      if (_bounds[_data[index].box] < _data[index].prio)
+    void bubbleDown(int index, int pr) {
+      if (_bounds[_data[index].box] < pr) {
+        _data[index].prio = pr;
         return;
+      }
       if (_data[index].box == 0) throw PriorityUnderflowError();
+      int box = findDown(_data[index].box - 1, pr);
+      _data[index].prio = pr;
       remove(index);
-      int box = findDown(_data[index].box - 1, _data[index].prio);
       insert(box, index);
     }
 
     // Find down the proper box for the item with the given priority
-    int findDown(int start, int pr) {
-      while (_bounds[start] + 1 > pr) {
-        if (--start < 0) throw PriorityUnderflowError();
+    int findDown(int start, int pr) const {
+      while (start >= 0 && _bounds[start] >= pr) {
+        --start;
       }
+      if (start < 0) throw PriorityUnderflowError();
       return start;
     }
 
     // Find the first non-empty box
-    int findFirst() {
+    int findFirst() const {
       int first = 0;
       while (_boxes[first] == -1) ++first;
       return first;
     }
 
-    // Gives back the minimum priority of the given box
-    int minValue(int box) {
-      int min = _data[_boxes[box]].prio;
-      for (int k = _boxes[box]; k != -1; k = _data[k].next) {
-        if (_data[k].prio < min) min = _data[k].prio;
+    // Gives back the index of an item with minimum priority in the given box
+    int minIndex(int box) const {
+      int min = _boxes[box];
+      for (int k = _data[min].next; k != -1; k = _data[k].next) {
+        if (_data[k].prio < _data[min].prio) min = k;
       }
       return min;
+    }
+
+    // Gives back the minimum priority of the given box
+    int minValue(int box) const {
+      return _data[minIndex(box)].prio;
     }
 
     // Rearrange the items of the heap and make the first box non-empty
@@ -237,11 +268,15 @@ namespace lemon {
       _bounds[0] = min - 1;
       _bounds[1] = min;
       int i = 2;
-      int new_bound = min + 1;
+      long long new_bound = static_cast<long long>(min) + 1;
       while (new_bound < _bounds[box + 1] && i <= box) {
-        _bounds[i] = new_bound;
+        _bounds[i] = static_cast<int>(new_bound);
         ++i;
-        new_bound = _bounds[i - 1] + (1 << (i - 2));
+        long long step = 1LL << (i - 2);
+        new_bound = static_cast<long long>(_bounds[i - 1]) + step;
+        if (new_bound > std::numeric_limits<int>::max()) {
+          new_bound = std::numeric_limits<int>::max();
+        }
       }
       for (; i <= box; ++i) {
         _bounds[i] = _bounds[box + 1];
@@ -251,7 +286,7 @@ namespace lemon {
       int next;
       while (curr != -1) {
         next = _data[curr].next;
-        bubbleDown(curr);
+        bubbleDown(curr, _data[curr].prio);
         curr = next;
       }
     }
@@ -281,12 +316,17 @@ namespace lemon {
     /// \param i The item to insert.
     /// \param p The priority of the item.
     /// \pre \e i must not be stored in the heap.
-    /// \warning This method may throw an \c UnderFlowPriorityException.
+    /// \warning This method may throw an \c PriorityUnderflowError.
     void push(const Item &i, const Prio &p) {
-      int n = _data.size();
-      _iim.set(i, n);
+      int box = findDown(static_cast<int>(_boxes.size()) - 1, p);
+      int n = static_cast<int>(_data.size());
       _data.push_back(RadixItem(i, p));
-      int box = findDown(_boxes.size() - 1, p);
+      try {
+        _iim.set(i, n);
+      } catch (...) {
+        _data.pop_back();
+        throw;
+      }
       insert(box, n);
     }
 
@@ -295,8 +335,8 @@ namespace lemon {
     /// This function returns the item having minimum priority.
     /// \pre The heap must be non-empty.
     Item top() const {
-      const_cast<RadixHeap<ItemIntMap>&>(*this).moveDown();
-      return _data[_boxes[0]].item;
+      int box = findFirst();
+      return _data[minIndex(box)].item;
     }
 
     /// \brief The minimum priority.
@@ -304,8 +344,8 @@ namespace lemon {
     /// This function returns the minimum priority.
     /// \pre The heap must be non-empty.
     Prio prio() const {
-      const_cast<RadixHeap<ItemIntMap>&>(*this).moveDown();
-      return _data[_boxes[0]].prio;
+      int box = findFirst();
+      return _data[minIndex(box)].prio;
     }
 
     /// \brief Remove the item having minimum priority.
@@ -351,19 +391,16 @@ namespace lemon {
     /// item into the heap with the given priority.
     /// \param i The item.
     /// \param p The priority.
-    /// \pre \e i must be in the heap.
-    /// \warning This method may throw an \c UnderFlowPriorityException.
+    /// \warning This method may throw an \c PriorityUnderflowError.
     void set(const Item &i, const Prio &p) {
       int idx = _iim[i];
       if( idx < 0 ) {
         push(i, p);
       }
       else if( p >= _data[idx].prio ) {
-        _data[idx].prio = p;
-        bubbleUp(idx);
+        bubbleUp(idx, p);
       } else {
-        _data[idx].prio = p;
-        bubbleDown(idx);
+        bubbleDown(idx, p);
       }
     }
 
@@ -373,11 +410,10 @@ namespace lemon {
     /// \param i The item.
     /// \param p The priority.
     /// \pre \e i must be stored in the heap with priority at least \e p.
-    /// \warning This method may throw an \c UnderFlowPriorityException.
+    /// \warning This method may throw an \c PriorityUnderflowError.
     void decrease(const Item &i, const Prio &p) {
       int idx = _iim[i];
-      _data[idx].prio = p;
-      bubbleDown(idx);
+      bubbleDown(idx, p);
     }
 
     /// \brief Increase the priority of an item to the given value.
@@ -388,8 +424,7 @@ namespace lemon {
     /// \pre \e i must be stored in the heap with priority at most \e p.
     void increase(const Item &i, const Prio &p) {
       int idx = _iim[i];
-      _data[idx].prio = p;
-      bubbleUp(idx);
+      bubbleUp(idx, p);
     }
 
     /// \brief Return the state of an item.

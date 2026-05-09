@@ -20,6 +20,15 @@
 #include <fstream>
 #include <string>
 #include <vector>
+#include <limits>
+
+// Expose RadixHeap internals for one regression test.  The issue being
+// tested is an internal off-by-one in the bucket/bound arrays, and it can
+// otherwise remain invisible in normal black-box heap behavior.
+#include <lemon/error.h>
+#define private public
+#include <lemon/radix_heap.h>
+#undef private
 
 #include <lemon/concept_check.h>
 #include <lemon/concepts/heap.h>
@@ -249,7 +258,7 @@ int main() {
       const int c = 10; // max key
 
       lemon::RangeMap<int> map(n, -1);
-      lemon::RadixHeap<lemon::RangeMap<int>> heap(map, 0, c);
+      lemon::RadixHeap<lemon::RangeMap<int> > heap(map, 0, c);
 
       heap.push(0, 2);
       heap.push(1, 3);
@@ -264,6 +273,71 @@ int main() {
       heap.pop();
       // keys: - 5 -
       check(heap.prio() == 5, "Wrong min element in Radix heap test.");
+    }
+
+    {
+      lemon::RangeMap<int> map(1, -1);
+      lemon::RadixHeap<lemon::RangeMap<int> > heap(map, 0, 0);
+
+      // Regression for the sentinel-box off-by-one reported in RadixHeap.
+      // _bounds stores N boundary values, so there are exactly N-1 real boxes:
+      // box i represents priorities (_bounds[i], _bounds[i+1]].  The final
+      // _bounds entry is only a sentinel upper bound, not another box.
+      check(heap._boxes.size() + 1 == heap._bounds.size(),
+            "RadixHeap must not allocate a box for the sentinel bound.");
+
+      heap.clear(0, 10);
+      check(heap._boxes.size() + 1 == heap._bounds.size(),
+            "RadixHeap::clear() must not allocate a box for the sentinel bound.");
+    }
+
+    {
+      lemon::RangeMap<int> map(2, -1);
+      lemon::RadixHeap<lemon::RangeMap<int> > heap(map, 0, 20);
+
+      heap.push(0, 10);
+      heap.push(1, 20);
+
+      check(heap.prio() == 10, "Wrong min element in Radix heap query test.");
+      check(heap.top() == 0, "Wrong top element in Radix heap query test.");
+
+      bool underflow = false;
+      try {
+        heap.decrease(1, 5);
+      } catch (const lemon::RadixHeap<lemon::RangeMap<int> >::PriorityUnderflowError&) {
+        underflow = true;
+      }
+      check(!underflow, "Radix heap query must not advance the lower bound.");
+      check(heap.prio() == 5, "Wrong min element after Radix heap decrease.");
+      check(heap.top() == 1, "Wrong top element after Radix heap decrease.");
+      heap.pop();
+      check(heap.prio() == 10, "Wrong remaining element after Radix heap decrease.");
+    }
+
+    {
+      lemon::RangeMap<int> map(1, -1);
+      lemon::RadixHeap<lemon::RangeMap<int> > heap(map, 0, 20);
+
+      heap.push(0, 10);
+      bool underflow = false;
+      try {
+        heap.decrease(0, -1);
+      } catch (const lemon::RadixHeap<lemon::RangeMap<int> >::PriorityUnderflowError&) {
+        underflow = true;
+      }
+      check(underflow, "Radix heap must reject priorities below the lower bound.");
+      check(heap.prio() == 10, "Failed Radix heap decrease must keep the old priority.");
+    }
+
+    {
+      lemon::RangeMap<int> map(1, -1);
+      lemon::RadixHeap<lemon::RangeMap<int> > heap(map);
+
+      heap.push(0, std::numeric_limits<int>::max());
+      check(heap.prio() == std::numeric_limits<int>::max(),
+            "Radix heap must accept INT_MAX priority.");
+      heap.pop();
+      check(heap.empty(), "Radix heap must be empty after popping INT_MAX.");
     }
   }
 
