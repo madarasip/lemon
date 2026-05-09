@@ -27,13 +27,17 @@
 #include <lemon/bin_heap.h>
 #include <lemon/bucket_heap.h>
 #include <lemon/connectivity.h>
-#include <lemon/lgf_writer.h>
 #include <lemon/list_graph.h>
 #include <lemon/maps.h>
 #include <lemon/unionfind.h>
 
+#include <algorithm>
+#include <iostream>
+#include <iterator>
 #include <limits>
+#include <tuple>
 #include <type_traits>
+#include <utility>
 #include <vector>
 
 
@@ -186,7 +190,7 @@ namespace lemon {
 
       // finds a node other than the sources with degree smaller than k
       template<typename DegMap>
-      Node findNodeWithDegLeqK(const DegMap& deg, const int k)
+      Node findNodeWithDegLessThanK(const DegMap& deg, const int k)
       {
         while(!emptyQueue()) {
           const Node u = _queue[_queue_tail++];
@@ -249,8 +253,13 @@ namespace lemon {
     /// \tparam IT The type of the iterator.
     /// \tparam CTOR The iterator constructor type.
     template<typename IT, typename... CTOR>
-    struct IterWrapper
-      : public IT, public std::iterator<std::input_iterator_tag, IT> {
+    struct IterWrapper : public IT {
+      using iterator_category = std::input_iterator_tag;
+      using value_type = IT;
+      using difference_type = std::ptrdiff_t;
+      using pointer = const IT*;
+      using reference = const IT&;
+
       IterWrapper(const CTOR&... ctor) : IT(ctor...)
       {}
 
@@ -623,6 +632,9 @@ namespace lemon {
     // The number of inserted edges (increased as edges are inserted).
     int _numInserted;
 
+    // Indicates whether init() has already been called.
+    bool _initialized;
+
     // The inner digraph constructed by the algorithm.
     Digraph* _innerDigraph;
     // Indicates whether _innerDigraph is locally allocated.
@@ -671,6 +683,9 @@ namespace lemon {
 
   public:
     using Create = UniSparseSpec;
+
+    UniSparseSpec(const UniSparseSpec&) = delete;
+    UniSparseSpec& operator=(const UniSparseSpec&) = delete;
 
     /// \name Named Template Parameters
 
@@ -945,6 +960,7 @@ namespace lemon {
       : _inputGraph(g), _k(k), _nextEdgeIt(_inputGraph),
         _previousEdge(INVALID), _numEdges(countEdges(_inputGraph)),
         _numNodes(countNodes(_inputGraph)), _numInserted(0),
+        _initialized(false),
         _innerDigraph(nullptr), _local_innerDigraph(false),
         _toInputNode(nullptr), _local_toInputNode(false),
         _toInnerNode(nullptr), _local_toInnerNode(false),
@@ -1020,6 +1036,7 @@ namespace lemon {
     /// \return <tt> (*this) </tt>
     UniSparseSpec& innerDigraph(Digraph& dg)
     {
+      LEMON_ASSERT(!_initialized, "Named parameters must be set before init()!");
       if(_local_innerDigraph) {
         _local_innerDigraph = false;
         delete _innerDigraph;
@@ -1042,6 +1059,7 @@ namespace lemon {
     /// \return <tt> (*this) </tt>
     UniSparseSpec& toInputNodeMap(ToInputNodeMap& m)
     {
+      LEMON_ASSERT(!_initialized, "Named parameters must be set before init()!");
       if(_local_toInputNode) {
         _local_toInputNode = false;
         delete _toInputNode;
@@ -1064,6 +1082,7 @@ namespace lemon {
     /// \return <tt> (*this) </tt>
     UniSparseSpec& toInnerNodeMap(ToInnerNodeMap& m)
     {
+      LEMON_ASSERT(!_initialized, "Named parameters must be set before init()!");
       if(_local_toInnerNode) {
         _local_toInnerNode = false;
         delete _toInnerNode;
@@ -1086,6 +1105,7 @@ namespace lemon {
     /// \return <tt> (*this) </tt>
     UniSparseSpec& toInputEdgeMap(ToInputEdgeMap& m)
     {
+      LEMON_ASSERT(!_initialized, "Named parameters must be set before init()!");
       if(_local_toInputEdge) {
         _local_toInputEdge = false;
         delete _toInputEdge;
@@ -1108,6 +1128,7 @@ namespace lemon {
     /// \return <tt> (*this) </tt>
     UniSparseSpec& toInnerArcMap(ToInnerArcMap& m)
     {
+      LEMON_ASSERT(!_initialized, "Named parameters must be set before init()!");
       if(_local_toInnerArc) {
         _local_toInnerArc = false;
         delete _toInnerArc;
@@ -1203,6 +1224,8 @@ namespace lemon {
 
       delete _outDeg;
       _outDeg = new OutDegMap(*_innerDigraph, 0);
+
+      _initialized = true;
     }
 
     /// \brief The next edge to be processed.
@@ -1502,7 +1525,7 @@ namespace lemon {
         _bfs->addSource(u);
         _bfs->addSource(v);
 
-        DNode n = _bfs->findNodeWithDegLeqK(*_outDeg, _k);
+        DNode n = _bfs->findNodeWithDegLessThanK(*_outDeg, _k);
 
         if(n == INVALID) {
           return false;
@@ -2180,6 +2203,7 @@ namespace lemon {
 
     using Parent::_bfs;
     using Parent::_innerDigraph;
+    using Parent::_initialized;
     using Parent::_inputGraph;
     using Parent::_k;
     using Parent::_nextEdgeIt;
@@ -2223,6 +2247,10 @@ namespace lemon {
     using RangeSelector = typename TR::RangeSelector;
     /// \brief The \ref UniSparseDefaultTraits "traits class" of the algorithm.
     using Traits = TR;
+
+    UniSparse(const UniSparse&) = delete;
+    UniSparse& operator=(const UniSparse&) = delete;
+
     // The type of the weights.
     using Weight = typename WeightMap::Value;
     // The node map that stores the out-degrees in the inner digraph.
@@ -3639,6 +3667,7 @@ namespace lemon {
     /// \return <tt> (*this) </tt>
     UniSparse& processingOrderContainer(ProcessingOrderContainer& v)
     {
+      LEMON_ASSERT(!_initialized, "Named parameters must be set before init()!");
       if(_local_processingOrderContainer) {
         _local_processingOrderContainer = false;
         delete _processingOrderContainer;
@@ -3744,7 +3773,7 @@ namespace lemon {
     ///
     /// \return \c true if weights are given, i.e. if the type of the WeightMap
     /// is not a NullMap.
-    constexpr bool weightedCase() const
+    bool weightedCase() const
     {
       using namespace unisparse_bits;
       LEMON_ASSERT(_weights || isNullMap<WeightMap>(),
@@ -4198,7 +4227,7 @@ namespace lemon {
         _bfs->addSource(u);
         _bfs->addSource(v);
 
-        DNode n = _bfs->findNodeWithDegLeqK(*_outDeg, _k);
+        DNode n = _bfs->findNodeWithDegLessThanK(*_outDeg, _k);
 
         if(n == INVALID) {
           return false;
@@ -4767,6 +4796,9 @@ namespace lemon {
 
     /// \brief The \ref UniSparseDefaultTraits "traits class" of the algorithm.
     using Traits = TR;
+
+    UniSparseComp(const UniSparseComp&) = delete;
+    UniSparseComp& operator=(const UniSparseComp&) = delete;
 
   private:
     using Edge = typename GR::Edge;
@@ -7108,9 +7140,9 @@ namespace lemon {
   /// algorithm.
   template<typename TR>
   class UniSparseSpecWizard : public TR {
+  public:
     using Parent = TR;
 
-  public:
     using typename Parent::Graph;
     using typename Parent::Digraph;
     using typename Parent::Node;
@@ -7139,23 +7171,25 @@ namespace lemon {
     template<typename USS>
     void setData(USS& uss)
     {
+      using AlgorithmTraits = typename USS::Traits;
+      UniSparseSpec<Graph, AlgorithmTraits>& base = uss;
       if(_digraph) {
-        uss.innerDigraph(*reinterpret_cast<Digraph*>(_digraph));
+        base.innerDigraph(*reinterpret_cast<Digraph*>(_digraph));
       }
       if(_toInputNodeMap) {
-        uss.toInputNodeMap(*reinterpret_cast<ToInputNodeMap*>
+        base.toInputNodeMap(*reinterpret_cast<ToInputNodeMap*>
                            (_toInputNodeMap));
       }
       if(_toInnerNodeMap) {
-        uss.toInnerNodeMap(*reinterpret_cast<ToInnerNodeMap*>
+        base.toInnerNodeMap(*reinterpret_cast<ToInnerNodeMap*>
                            (_toInnerNodeMap));
       }
       if(_toInputEdgeMap) {
-        uss.toInputEdgeMap(*reinterpret_cast<ToInputEdgeMap*>
+        base.toInputEdgeMap(*reinterpret_cast<ToInputEdgeMap*>
                            (_toInputEdgeMap));
       }
       if(_toInnerArcMap) {
-        uss.toInnerArcMap(*reinterpret_cast<ToInnerArcMap*>
+        base.toInnerArcMap(*reinterpret_cast<ToInnerArcMap*>
                           (_toInnerArcMap));
       }
     }
@@ -7460,9 +7494,9 @@ namespace lemon {
   // this is a Traits class for UniSparseSpec
   template<typename GR, typename WM = NullMap<typename GR::Edge, int>>
   class UniSparseWizardBase : public UniSparseSpecWizardBase<GR> {
+  public:
     using Parent = UniSparseSpecWizardBase<GR>;
 
-  public:
     using typename Parent::Graph;
     using typename Parent::Digraph;
     using typename Parent::Node;
@@ -7528,9 +7562,9 @@ namespace lemon {
   /// algorithm.
   template<template<typename, typename, typename> class US, typename TR>
   class UniSparseWizard : public TR {
+  public:
     using Parent = TR;
 
-  public:
     using typename Parent::Graph;
     using typename Parent::Digraph;
     using typename Parent::Node;
@@ -7881,27 +7915,34 @@ namespace lemon {
     template<typename USVariant>
     void setData(USVariant& us)
     {
+      using AlgorithmTraits = typename USVariant::Traits;
+      UniSparseSpec<Graph, AlgorithmTraits>& specBase = us;
+      UniSparse<Graph, WeightMap, AlgorithmTraits>& sparseBase = us;
       if(!_maximize) {
-        us.minimize();
+        sparseBase.minimize();
       }
       if(_digraph) {
-        us.innerDigraph(*reinterpret_cast<Digraph*>(_digraph));
+        specBase.innerDigraph(*reinterpret_cast<Digraph*>(_digraph));
       }
       if(_toInputNodeMap) {
-        us.toInputNodeMap(*reinterpret_cast<ToInputNodeMap*>(_toInputNodeMap));
+        specBase.toInputNodeMap(*reinterpret_cast<ToInputNodeMap*>
+                                (_toInputNodeMap));
       }
       if(_toInnerNodeMap) {
-        us.toInnerNodeMap(*reinterpret_cast<ToInnerNodeMap*>(_toInnerNodeMap));
+        specBase.toInnerNodeMap(*reinterpret_cast<ToInnerNodeMap*>
+                                (_toInnerNodeMap));
       }
       if(_toInputEdgeMap) {
-        us.toInputEdgeMap(*reinterpret_cast<ToInputEdgeMap*>(_toInputEdgeMap));
+        specBase.toInputEdgeMap(*reinterpret_cast<ToInputEdgeMap*>
+                                (_toInputEdgeMap));
       }
       if(_toInnerArcMap) {
-        us.toInnerArcMap(*reinterpret_cast<ToInnerArcMap*>(_toInnerArcMap));
+        specBase.toInnerArcMap(*reinterpret_cast<ToInnerArcMap*>
+                               (_toInnerArcMap));
       }
       if(_poc) {
-        us.processingOrderContainer(*reinterpret_cast<
-                                    ProcessingOrderContainer*>(_poc));
+        sparseBase.processingOrderContainer(
+          *reinterpret_cast<ProcessingOrderContainer*>(_poc));
       }
     }
 
